@@ -7,7 +7,7 @@ variable "profile" {
 }
 
 locals {
-  project = "hnh-food"
+  project = "hnh-food-aleth"
 }
 
 provider "aws" {
@@ -19,23 +19,8 @@ provider "archive" {}
 
 resource "aws_s3_bucket" "main" {
   bucket = local.project
-  acl = "public-read"
-  policy = <<POLICY
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "PublicReadGetObject",
-            "Effect": "Allow",
-            "Principal": "*",
-            "Action": "s3:GetObject",
-            "Resource": "arn:aws:s3:::${local.project}/*"
-        }
-    ]
-}
-POLICY
-
-  website {
+   
+   website {
     index_document = "index.html"
     error_document = "error.html"
   }
@@ -46,6 +31,31 @@ POLICY
   }
 }
 
+resource "aws_s3_bucket_ownership_controls" "main" {
+  bucket = aws_s3_bucket.main.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "main" {
+  bucket = aws_s3_bucket.main.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+resource "aws_s3_bucket_acl" "main" {
+  depends_on = [
+    aws_s3_bucket_ownership_controls.main,
+    aws_s3_bucket_public_access_block.main,
+  ]
+
+  bucket = aws_s3_bucket.main.id
+  acl    = "public-read"
+}
 
 resource "aws_dynamodb_table" "main" {
   name = local.project
@@ -161,7 +171,7 @@ resource "aws_lambda_function" "stream_processor" {
   handler = "handler.handler"
   filename = data.archive_file.lambda_stream_processor_src.output_path
   source_code_hash = data.archive_file.lambda_stream_processor_src.output_base64sha256
-  runtime = "nodejs12.x"
+  runtime = "nodejs20.x"
 
   environment {
     variables = {
@@ -187,7 +197,7 @@ resource "aws_lambda_function" "data_receiver" {
   handler = "handler.handler"
   filename = data.archive_file.lambda_data_receiver_src.output_path
   source_code_hash = data.archive_file.lambda_data_receiver_src.output_base64sha256
-  runtime = "nodejs12.x"
+  runtime = "nodejs20.x"
 
   environment {
     variables = {

@@ -15,3 +15,5 @@ lambdas/package-lock.json
 *.tfvars
 *.tfstate
 *.tfstate.backup
+/terraform.exe
+/.terraform.lock.hcl
